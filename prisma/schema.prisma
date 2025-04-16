@@ -1,0 +1,79 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Poll model to represent voting polls
+model Poll {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  startDate   DateTime
+  endDate     DateTime
+  options     Option[]
+  votes       Vote[]
+  tokens      Token[]
+  active      Boolean  @default(true)
+  createdBy   String
+}
+
+// Option model for poll choices
+model Option {
+  id        String   @id @default(cuid())
+  text      String
+  pollId    String
+  poll      Poll     @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  votes     Vote[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Vote model to store encrypted votes
+model Vote {
+  id            String   @id @default(cuid())
+  pollId        String
+  poll          Poll     @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  optionId      String
+  option        Option   @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  encryptedVote String   // Encrypted vote data
+  signature     String   // Voter's signature to verify authenticity
+  blockchainTx  String?  // Optional blockchain transaction ID
+  createdAt     DateTime @default(now())
+  tokenId       String?  // References the token used for voting
+  fingerprint   String?  // Hashed browser fingerprint for fraud prevention
+}
+
+// Token model for anonymous authentication
+model Token {
+  id        String    @id @default(cuid())
+  pollId    String
+  poll      Poll      @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  token     String    @unique // Hashed token
+  used      Boolean   @default(false)
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  expiresAt DateTime
+  ipHash    String?   // Hashed IP for rate limiting
+}
+
+// User model for poll creators
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  password  String   // Hashed password
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
